@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker info *)",
+      "Read(//usr/local/lib/**)",
+      "Read(//home/filipgrk/.nvm/**)",
+      "Read(//home/filipgrk/.volta/**)",
+      "Read(//home/**)",
+      "Bash(command -v nvm)",
+      "Read(//usr/local/**)",
+      "Read(//home/filipgrk/**)",
+      "Bash(bash -i -c \"node --version\")",
+      "Bash(bash -i -c \"nvm --version\")",
+      "Bash(chmod +x /mnt/c/work/claude/scripts/demo.sh)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git config *)"
+    ]
+  }
+}

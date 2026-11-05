@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: stayhub_owner
+      POSTGRES_PASSWORD: stayhub_owner_pass
+      POSTGRES_DB: stayhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stayhub_owner -d stayhub"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    build: .
+    command: npm run migrate
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: stayhub
+      PGUSER: stayhub_owner
+      PGPASSWORD: stayhub_owner_pass
+      OWNER_PGUSER: stayhub_owner
+      OWNER_PGPASSWORD: stayhub_owner_pass
+      APP_PGPASSWORD: stayhub_app_pass
+      WORKER_PGPASSWORD: stayhub_worker_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    command: node --import tsx/esm src/api/server.ts
+    ports:
+      - "3000:3000"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: stayhub
+      PGUSER: stayhub_app
+      PGPASSWORD: stayhub_app_pass
+      PORT: 3000
+      NODE_ENV: production
+      API_BASE_URL: http://api:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build: .
+    command: node --import tsx/esm src/worker/index.ts
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: stayhub
+      PGUSER: stayhub_worker
+      PGPASSWORD: stayhub_worker_pass
+      WORKER_POLL_MS: 1000
+      WORKER_CONCURRENCY: 4
+      API_BASE_URL: http://api:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  mock-ota:
+    build: .
+    command: node --import tsx/esm src/mock-ota/server.ts
+    ports:
+      - "4000:4000"
+    environment:
+      MOCK_OTA_PORT: 4000
+      API_BASE_URL: http://api:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
