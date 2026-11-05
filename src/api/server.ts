@@ -90,7 +90,7 @@ app.get('/v1/availability', async (req) => {
       arrival: q.data.arrival,
       departure: q.data.departure,
       adults: q.data.adults,
-      channelCode: q.data.channel,
+      ...(q.data.channel !== undefined ? { channelCode: q.data.channel } : {}),
     });
     return { offers };
   });
@@ -112,7 +112,15 @@ app.post('/v1/bookings/hold', async (req, reply) => {
   if (!b.success) throw Err.badRequest('Invalid body', b.error.flatten());
 
   const result = await withTenant(pool, tenantId(req), (c) =>
-    holdReservation(c, tenantId(req), b.data),
+    holdReservation(c, tenantId(req), {
+      propertyId: b.data.property_id,
+      ratePlanId: b.data.rate_plan_id,
+      roomTypeId: b.data.room_type_id,
+      channelId: b.data.channel_id,
+      adults: b.data.adults,
+      arrival: b.data.arrival,
+      departure: b.data.departure,
+    }),
   );
   return reply.status(201).send(result);
 });
@@ -184,7 +192,7 @@ app.post('/v1/yield/run', async (req) => {
   const b = runYieldSchema.safeParse((req as unknown as { body: unknown }).body);
   if (!b.success) throw Err.badRequest('Invalid body', b.error.flatten());
   return withTenant(pool, tenantId(req), (c) =>
-    runYield(c, tenantId(req), { propertyId: b.data.property_id, from: b.data.from, to: b.data.to, dryRun: b.data.dry_run }),
+    runYield(c, tenantId(req), { propertyId: b.data.property_id, from: b.data.from, to: b.data.to, ...(b.data.dry_run !== undefined ? { dryRun: b.data.dry_run } : {}) }),
   );
 });
 
@@ -206,10 +214,11 @@ app.put('/v1/restrictions', async (req) => {
   return withTenant(pool, tenantId(req), (c) =>
     setRestrictions(c, tenantId(req), {
       ratePlanId: b.data.rate_plan_id, from: b.data.from, to: b.data.to,
-      minLos: b.data.min_los, maxLos: b.data.max_los,
-      closedToArrival: b.data.closed_to_arrival,
-      closedToDeparture: b.data.closed_to_departure,
-      stopSell: b.data.stop_sell,
+      ...(b.data.min_los !== undefined ? { minLos: b.data.min_los } : {}),
+      ...(b.data.max_los !== undefined ? { maxLos: b.data.max_los } : {}),
+      ...(b.data.closed_to_arrival !== undefined ? { closedToArrival: b.data.closed_to_arrival } : {}),
+      ...(b.data.closed_to_departure !== undefined ? { closedToDeparture: b.data.closed_to_departure } : {}),
+      ...(b.data.stop_sell !== undefined ? { stopSell: b.data.stop_sell } : {}),
     }),
   );
 });

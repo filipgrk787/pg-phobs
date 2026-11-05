@@ -67,13 +67,18 @@ export async function resetTestData(): Promise<void> {
 export async function getTenantChannel(tenantId: string, channelCode: string): Promise<{ id: string; propertyId: string }> {
   const client = await testPool.connect();
   try {
+    await client.query('BEGIN');
     await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
     const { rows } = await client.query<{ id: string; property_id: string }>(
       `SELECT id, property_id FROM channels WHERE code = $1 LIMIT 1`,
       [channelCode],
     );
+    await client.query('COMMIT');
     if (!rows[0]) throw new Error(`Channel ${channelCode} not found for tenant ${tenantId}`);
     return { id: rows[0].id, propertyId: rows[0].property_id };
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
   } finally {
     client.release();
   }
@@ -82,13 +87,18 @@ export async function getTenantChannel(tenantId: string, channelCode: string): P
 export async function getTenantRatePlan(tenantId: string, code: string): Promise<string> {
   const client = await testPool.connect();
   try {
+    await client.query('BEGIN');
     await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
     const { rows } = await client.query<{ id: string }>(
       `SELECT id FROM rate_plans WHERE code = $1 LIMIT 1`,
       [code],
     );
+    await client.query('COMMIT');
     if (!rows[0]) throw new Error(`Rate plan ${code} not found`);
     return rows[0].id;
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
   } finally {
     client.release();
   }

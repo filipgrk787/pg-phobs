@@ -50,16 +50,9 @@ describe('input validation', () => {
     const barPlanId = await getTenantRatePlan(TENANT1, 'BAR');
 
     // Set stop sell
-    const client = await testPool.connect();
-    try {
-      await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [TENANT1]);
-      await client.query(
-        `UPDATE inventory_nights SET stop_sell = true WHERE room_type_id = $1 AND night = $2`,
-        [DBL_RT, arr],
-      );
-    } finally {
-      client.release();
-    }
+    await withTenant(testPool, TENANT1, (c) =>
+      c.query(`UPDATE inventory_nights SET stop_sell = true WHERE room_type_id = $1 AND night = $2`, [DBL_RT, arr]),
+    );
 
     await assert.rejects(
       () => withTenant(testPool, TENANT1, (c) =>
@@ -77,13 +70,18 @@ describe('input validation', () => {
 async function getWebChannel(tenantId: string, propertyId: string): Promise<string> {
   const client = await testPool.connect();
   try {
+    await client.query('BEGIN');
     await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
     const { rows } = await client.query<{ id: string }>(
       `SELECT id FROM channels WHERE property_id = $1 AND code = 'web' LIMIT 1`,
       [propertyId],
     );
+    await client.query('COMMIT');
     if (!rows[0]) throw new Error(`web channel not found for ${propertyId}`);
     return rows[0].id;
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
   } finally {
     client.release();
   }

@@ -99,6 +99,35 @@ export async function holdReservation(
     if (free <= 0) throw Err.conflict('No availability on ' + inv.night);
   }
 
+  // Check rate plan restrictions (min/max LOS, CTA, CTD)
+  const { rows: restrictRows } = await c.query<{
+    night: string; min_los: number | null; max_los: number | null;
+    closed_to_arrival: boolean; closed_to_departure: boolean; stop_sell: boolean;
+  }>(
+    `SELECT night::text, min_los, max_los, closed_to_arrival, closed_to_departure, stop_sell
+     FROM restrictions
+     WHERE rate_plan_id = $1 AND night = ANY($2::date[])`,
+    [params.ratePlanId, nights],
+  );
+
+  if (restrictRows.length > 0) {
+    const { checkRestrictions } = await import('../ari/pricing.js');
+    const restrictMap = new Map(restrictRows.map(r => [r.night, {
+      night: r.night,
+      minLos: r.min_los,
+      maxLos: r.max_los,
+      closedToArrival: r.closed_to_arrival,
+      closedToDeparture: r.closed_to_departure,
+      stopSell: r.stop_sell,
+    }]));
+    const invMap = new Map(invRows.map(r => [r.night, {
+      night: r.night,
+      free: r.stop_sell ? 0 : Math.max(r.total - r.sold - r.held - r.out_of_order, 0),
+    }]));
+    const reason = checkRestrictions(params.arrival, params.departure, nights, restrictMap, invMap);
+    if (reason) throw Err.conflict(`Restriction violated: ${reason}`);
+  }
+
   // Compute per-night prices
   const perNight: { night: string; amount: number }[] = [];
   let totalAmount = 0;

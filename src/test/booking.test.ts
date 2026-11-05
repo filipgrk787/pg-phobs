@@ -341,13 +341,18 @@ async function getInventory(roomTypeId: string, night: string): Promise<{ total:
 async function getWebChannel(tenantId: string, propertyId: string): Promise<string> {
   const client = await testPool.connect();
   try {
+    await client.query('BEGIN');
     await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
     const { rows } = await client.query<{ id: string }>(
       `SELECT id FROM channels WHERE property_id = $1 AND code = 'web' LIMIT 1`,
       [propertyId],
     );
+    await client.query('COMMIT');
     if (!rows[0]) throw new Error(`web channel not found for ${propertyId}`);
     return rows[0].id;
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
   } finally {
     client.release();
   }

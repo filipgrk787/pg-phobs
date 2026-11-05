@@ -38,16 +38,22 @@ describe('yield', () => {
     // Create a yield rule: occ >= 50% => L4
     const client = await testPool.connect();
     try {
+      await client.query('BEGIN');
       await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [TENANT1]);
       const { rows: levels } = await client.query<{ id: string }>(
         `SELECT id FROM price_levels WHERE property_id = $1 AND code = 'L4'`,
         [PROPERTY1],
       );
+      if (!levels[0]) throw new Error('L4 price level not found');
       await client.query(
         `INSERT INTO yield_rules(property_id, tenant_id, name, occ_threshold, level_id, priority)
          VALUES ($1, $2, 'High Demand', 0.5, $3, 10)`,
-        [PROPERTY1, TENANT1, levels[0]!.id],
+        [PROPERTY1, TENANT1, levels[0].id],
       );
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
     } finally {
       client.release();
     }

@@ -163,9 +163,9 @@ export async function searchAvailability(
           totalAmount,
           perNight,
           available: reason === null,
-          unavailableReason: reason ?? undefined,
+          ...(reason !== null ? { unavailableReason: reason } : {}),
           refundable: plan.refundable,
-          freeCancelUntil,
+          ...(freeCancelUntil !== undefined ? { freeCancelUntil } : {}),
         });
       }
     }

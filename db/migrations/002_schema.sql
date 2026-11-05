@@ -175,7 +175,7 @@ CREATE TABLE reservations (
   payment_ref        TEXT,
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(channel_id, external_ref) DEFERRABLE INITIALLY IMMEDIATE
+  UNIQUE(channel_id, external_ref)
 );
 -- Allow multiple NULLs in external_ref (UNIQUE ignores NULLs by default in PG)
 

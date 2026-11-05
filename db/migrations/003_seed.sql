@@ -35,7 +35,7 @@ DECLARE
   dbl_base NUMERIC := 100;
   sui_base NUMERIC := 150;
   vil_base NUMERIC := 200;
-  night    DATE;
+  cur_night DATE;
 BEGIN
   -- TENANTS
   INSERT INTO tenants(id, name) VALUES
@@ -175,23 +175,23 @@ BEGIN
   ON CONFLICT DO NOTHING;
 
   -- DEFAULT NIGHT LEVELS: L3 for 365 days
-  FOR night IN
+  FOR cur_night IN
     SELECT generate_series(CURRENT_DATE, CURRENT_DATE + 364, '1 day'::interval)::DATE
   LOOP
     INSERT INTO night_levels(property_id, night, tenant_id, level_id) VALUES
-      (p1_id, night, t1_id, p1l3),
-      (p2_id, night, t2_id, p2l3)
+      (p1_id, cur_night, t1_id, p1l3),
+      (p2_id, cur_night, t2_id, p2l3)
     ON CONFLICT(property_id, night) DO NOTHING;
   END LOOP;
 
   -- INVENTORY: 365 days for all room types
-  FOR night IN
+  FOR cur_night IN
     SELECT generate_series(CURRENT_DATE, CURRENT_DATE + 364, '1 day'::interval)::DATE
   LOOP
     INSERT INTO inventory_nights(room_type_id, night, tenant_id, total) VALUES
-      (dbl_id, night, t1_id, 10),
-      (sui_id, night, t1_id,  3),
-      (vil_id, night, t2_id,  4)
+      (dbl_id, cur_night, t1_id, 10),
+      (sui_id, cur_night, t1_id,  3),
+      (vil_id, cur_night, t2_id,  4)
     ON CONFLICT(room_type_id, night) DO NOTHING;
   END LOOP;
 

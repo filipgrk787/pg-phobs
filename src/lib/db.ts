@@ -3,7 +3,7 @@ import pg from 'pg';
 const { Pool } = pg;
 
 export type PoolClient = pg.PoolClient;
-export type QueryResult<T = pg.QueryResultRow> = pg.QueryResult<T>;
+export type QueryResult<T extends pg.QueryResultRow = pg.QueryResultRow> = pg.QueryResult<T>;
 
 function makePool(overrides: Partial<pg.PoolConfig> = {}): pg.Pool {
   const pool = new Pool({

@@ -13,6 +13,7 @@ const AEGEAN_BAR_PLAN_ID = ''; // resolved at runtime
 
 // In-memory ARI store: grid[roomCode][rateCode][date] = { price, free, stopSell }
 type NightData = { price: number; free: number; stopSell: boolean };
+type AriNight = NightData & { date: string };
 const grid: Record<string, Record<string, Record<string, NightData>>> = {};
 // Also store rate_plan_id and room_type_id from ARI for booking simulation
 const ratePlanIds: Record<string, string> = {};
@@ -22,14 +23,15 @@ const roomTypeIds: Record<string, string> = {};
 app.post('/ari', async (req, reply) => {
   const body = (req as unknown as { body: unknown }).body as {
     propertyId: string;
-    updates: { roomCode: string; rateCode: string; nights: NightData[] }[];
+    updates: { roomCode: string; rateCode: string; nights: AriNight[] }[];
   };
 
   for (const u of body.updates ?? []) {
     if (!grid[u.roomCode]) grid[u.roomCode] = {};
     if (!grid[u.roomCode]![u.rateCode]) grid[u.roomCode]![u.rateCode] = {};
     for (const n of u.nights) {
-      grid[u.roomCode]![u.rateCode]![n.date as string] = n;
+      const { date, ...data } = n;
+      grid[u.roomCode]![u.rateCode]![date] = data;
     }
   }
 
